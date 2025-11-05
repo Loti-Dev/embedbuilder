@@ -21,9 +21,9 @@ let params = new URLSearchParams(location.search),
     onlyEmbed = hasParam('embed') || options.onlyEmbed,
     allowPlaceholders = hasParam('placeholders') || options.allowPlaceholders,
     autoUpdateURL = localStorage.getItem('autoUpdateURL') || options.autoUpdateURL,
-    noMultiEmbedsOption = localStorage.getItem('noMultiEmbedsOption') || hasParam('nomultiembedsoption') || options.noMultiEmbedsOption,
-    single = noMultiEmbedsOption ? options.single ?? true : (localStorage.getItem('single') || hasParam('single') || options.single) ?? false,
-    multiEmbeds = !single,
+    noMultiEmbedsOption = true, 
+    single = true, 
+    multiEmbeds = false, 
     autoParams = localStorage.getItem('autoParams') || hasParam('autoparams') || options.autoParams,
     hideEditor = localStorage.getItem('hideeditor') || hasParam('hideeditor') || options.hideEditor,
     hidePreview = localStorage.getItem('hidepreview') || hasParam('hidepreview') || options.hidePreview,
@@ -674,12 +674,6 @@ addEventListener('DOMContentLoaded', () => {
     // Renders the GUI editor with json data from 'jsonObject'.
     buildGui = (object = jsonObject, opts) => {
         gui.innerHTML = '';
-        gui.appendChild(guiEmbedAddFragment.firstChild.cloneNode(true))
-            .addEventListener('click', () => {
-                if (indexOfEmptyGuiEmbed('(empty embed)') !== -1) return;
-                jsonObject.embeds.push({});
-                buildGui();
-            });
 
         for (const child of Array.from(guiFragment.childNodes)) {
             if (child.classList?.[1] === 'content')
@@ -688,12 +682,8 @@ addEventListener('DOMContentLoaded', () => {
                 for (const [i, embed] of (object.embeds.length ? object.embeds : [{}]).entries()) {
                     const guiEmbedName = gui.appendChild(child.cloneNode(true))
 
-                    guiEmbedName.querySelector('.text').innerHTML = `Embed ${i + 1}${embed.title ? `: <span>${embed.title}</span>` : ''}`;
-                    guiEmbedName.querySelector('.icon').addEventListener('click', () => {
-                        object.embeds.splice(i, 1);
-                        buildGui();
-                        buildEmbed();
-                    });
+                    guiEmbedName.querySelector('.text').innerHTML = `Embed${embed.title ? `: <span>${embed.title}</span>` : ''}`;
+                    guiEmbedName.querySelector('.icon').style.display = 'none'; // Hide delete icon
 
                     const guiEmbed = gui.appendChild(createElement({ 'div': { className: 'guiEmbed' } }));
                     const guiEmbedTemplate = child.nextElementSibling;
