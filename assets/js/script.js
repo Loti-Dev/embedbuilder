@@ -1,12 +1,12 @@
 /**
- * Discord Embed Builder
+ * Modifed Discord Embed Builder
  * Contribute or report issues at
  * https://github.com/Glitchii/embedbuilder
  */
 
 window.options ??= {};
 window.inIframe ??= top !== self;
-mainHost = "glitchii.github.io";
+// mainHost = "glitchii.github.io";
 
 let params = new URLSearchParams(location.search),
     hasParam = param => params.get(param) !== null,
@@ -89,6 +89,141 @@ const decodeJson = data => {
 // Use encodeJson and decodeJson instead, they are aliases.
 let jsonToBase64 = encodeJson, base64ToJson = decodeJson;
 
+// Parse scripting language format to JSON
+const parseScriptFormat = (scriptText) => {
+    const result = {};
+    const embedObj = {};
+    
+    // Match all {key: value} patterns
+    const regex = /\{([^:]+):\s*([^}]+)\}/g;
+    let match;
+    
+    while ((match = regex.exec(scriptText)) !== null) {
+        const key = match[1].trim();
+        const value = match[2].trim();
+        
+        switch(key.toLowerCase()) {
+            case 'message':
+            case 'content':
+                result.content = value;
+                break;
+            case 'title':
+                embedObj.title = value;
+                break;
+            case 'description':
+                embedObj.description = value;
+                break;
+            case 'color':
+                // Convert hex color to integer
+                const hex = value.replace('#', '');
+                embedObj.color = parseInt(hex, 16);
+                break;
+            case 'author':
+                // Format: Name && URL && Icon URL
+                const authorParts = value.split('&&').map(s => s.trim());
+                embedObj.author = {
+                    name: authorParts[0] || '',
+                    ...(authorParts[1] && { url: authorParts[1] }),
+                    ...(authorParts[2] && { icon_url: authorParts[2] })
+                };
+                break;
+            case 'footer':
+                // Format: Text && Icon URL
+                const footerParts = value.split('&&').map(s => s.trim());
+                embedObj.footer = {
+                    text: footerParts[0] || '',
+                    ...(footerParts[1] && { icon_url: footerParts[1] })
+                };
+                break;
+            case 'image':
+                embedObj.image = { url: value };
+                break;
+            case 'thumbnail':
+                embedObj.thumbnail = { url: value };
+                break;
+            case 'field':
+                // Format: Name && Value && Inline (true/false)
+                const fieldParts = value.split('&&').map(s => s.trim());
+                if (!embedObj.fields) embedObj.fields = [];
+                embedObj.fields.push({
+                    name: fieldParts[0] || '',
+                    value: fieldParts[1] || '',
+                    ...(fieldParts[2] && fieldParts[2].toLowerCase() === 'true' && { inline: true })
+                });
+                break;
+        }
+    }
+    
+    if (Object.keys(embedObj).length > 0) {
+        result.embed = embedObj;
+    }
+    
+    return result;
+};
+
+const toScriptFormat = (jsonObj) => {
+    let script = '';
+    
+    if (jsonObj.content) {
+        script += `{content: ${jsonObj.content}} `;
+    }
+    
+    const embed = jsonObj.embed || (jsonObj.embeds && jsonObj.embeds[0]);
+    
+    if (embed) {
+        // Add title
+        if (embed.title) {
+            script += `{title: ${embed.title}} `;
+        }
+        
+        // Add description
+        if (embed.description) {
+            script += `{description: ${embed.description}} `;
+        }
+        
+        // Add color
+        if (embed.color !== undefined) {
+            const hex = '#' + embed.color.toString(16).padStart(6, '0');
+            script += `{color: ${hex}} `;
+        }
+        
+        // Add author
+        if (embed.author && embed.author.name) {
+            let authorStr = embed.author.name;
+            if (embed.author.url) authorStr += ` && ${embed.author.url}`;
+            if (embed.author.icon_url) authorStr += ` && ${embed.author.icon_url}`;
+            script += `{author: ${authorStr}} `;
+        }
+        
+        // Add footer
+        if (embed.footer && embed.footer.text) {
+            let footerStr = embed.footer.text;
+            if (embed.footer.icon_url) footerStr += ` && ${embed.footer.icon_url}`;
+            script += `{footer: ${footerStr}} `;
+        }
+        
+        // Add image
+        if (embed.image && embed.image.url) {
+            script += `{image: ${embed.image.url}} `;
+        }
+        
+        // Add thumbnail
+        if (embed.thumbnail && embed.thumbnail.url) {
+            script += `{thumbnail: ${embed.thumbnail.url}} `;
+        }
+        
+        // Add fields
+        if (embed.fields && embed.fields.length > 0) {
+            embed.fields.forEach(field => {
+                let fieldStr = `${field.name} && ${field.value}`;
+                if (field.inline) fieldStr += ' && true';
+                script += `{field: ${fieldStr}} `;
+            });
+        }
+    }
+    
+    return script.trim();
+};
 
 const toRGB = (hex, reversed, integer) => {
     if (reversed) return '#' + hex.match(/\d+/g).map(x => parseInt(x).toString(16).padStart(2, '0')).join('');
@@ -200,16 +335,14 @@ let allJsonKeys = [...mainKeys, ...embedKeys];
 // 'jsonObject' is used internally, do not change it's value. Assign to 'json' instead.
 // 'json' is the object that is used to build the embed. Assigning to it also updates the editor.
 let jsonObject = window.json || {
-    content: "You can~~not~~ do `this`.```py\nAnd this.\nprint('Hi')```\n*italics* or _italics_     __*underline italics*__\n**bold**     __**underline bold**__\n***bold italics***  __***underline bold italics***__\n__underline__     ~~Strikethrough~~",
+    content: "Welcome to the Script Embed Builder!",
     embed: {
-        title: "Hello ~~people~~ world :wave:",
-        description: "You can use [links](https://discord.com) or emojis :smile: 😎\n```\nAnd also code blocks\n```",
-        color: 0x41f097,
-        timestamp: new Date().toISOString(),
-        url: "https://discord.com",
+        title: "Example Embed",
+        description: "This is a sample description. You can use markdown formatting!",
+        color: 0xB587FF,
         author: {
-            name: "Author name",
-            url: "https://discord.com",
+            name: "Author Name",
+            url: "https://loti.dev",
             icon_url: "https://cdn.discordapp.com/embed/avatars/0.png"
         },
         thumbnail: {
@@ -219,38 +352,23 @@ let jsonObject = window.json || {
             url: "https://glitchii.github.io/embedbuilder/assets/media/banner.png"
         },
         footer: {
-            text: "Footer text",
+            text: "Footer Text",
             icon_url: "https://cdn.discordapp.com/embed/avatars/0.png"
         },
         fields: [
             {
-                name: "Field 1, *lorem* **ipsum**, ~~dolor~~",
-                value: "Field value"
+                name: "Field Name",
+                value: "Field Value"
             },
             {
-                name: "Field 2",
-                value: "You can use custom emojis <:Kekwlaugh:722088222766923847>. <:GangstaBlob:742256196295065661>",
-                inline: false
-            },
-            {
-                name: "Inline field",
-                value: "Fields can be inline",
+                name: "Inline Field 1",
+                value: "Inline value",
                 inline: true
             },
             {
-                name: "Inline field",
-                value: "*Lorem ipsum*",
+                name: "Inline Field 2",
+                value: "Another inline value",
                 inline: true
-            },
-            {
-                name: "Inline field",
-                value: "value",
-                inline: true
-            },
-            {
-                name: "Another field",
-                value: "> Nope, didn't forget about this",
-                inline: false
             }
         ]
     }
@@ -336,32 +454,20 @@ addEventListener('DOMContentLoaded', () => {
         gui = guiParent.querySelector('.gui:first-of-type');
 
     editor = CodeMirror(elt => editorHolder.parentNode.replaceChild(elt, editorHolder), {
-        value: JSON.stringify(json, null, 4),
-        gutters: ["CodeMirror-foldgutter", "CodeMirror-lint-markers"],
+        value: toScriptFormat(json),
+        gutters: [],
         scrollbarStyle: "overlay",
-        mode: "application/json",
+        mode: "text/plain",
         theme: 'material-darker',
-        matchBrackets: true,
-        foldGutter: true,
-        lint: true,
-        extraKeys: {
-            // Fill in indent spaces on a new line when enter (return) key is pressed.
-            Enter: _ => {
-                const cursor = editor.getCursor();
-                const end = editor.getLine(cursor.line);
-                const leadingSpaces = end.replace(/\S($|.)+/g, '') || '    \n';
-                const nextLine = editor.getLine(cursor.line + 1);
-
-                if ((nextLine === undefined || !nextLine.trim()) && !end.substr(cursor.ch).trim())
-                    editor.replaceRange('\n', { line: cursor.line, ch: cursor.ch });
-                else
-                    editor.replaceRange(`\n${end.endsWith('{') ? leadingSpaces + '    ' : leadingSpaces}`, {
-                        line: cursor.line,
-                        ch: cursor.ch
-                    });
-            },
-        }
+        matchBrackets: false,
+        foldGutter: false,
+        lint: false,
+        extraKeys: {}
     });
+
+    // Set script mode by default
+    document.body.classList.add('script');
+    document.body.classList.remove('gui');
 
     editor.focus();
 
@@ -1148,32 +1254,18 @@ addEventListener('DOMContentLoaded', () => {
 
     editor.on('change', editor => {
         // If the editor value is not set by the user, return.
-        if (JSON.stringify(json, null, 4) === editor.getValue()) return;
+        const currentValue = editor.getValue();
+        const isScriptMode = document.body.classList.contains('script');
+        
+        if (isScriptMode && toScriptFormat(json) === currentValue) return;
 
         try {
-            // Autofill when " is typed on new line
-            const line = editor.getCursor().line;
-            const text = editor.getLine(line)
-
-            if (text.trim() === '"') {
-                editor.replaceRange(text.trim() + ':', { line, ch: line.length });
-                editor.setCursor(line, text.length)
-            }
-
-            json = JSON.parse(editor.getValue());
-            const dataKeys = Object.keys(json);
-
-            if (dataKeys.length && !allJsonKeys.some(key => dataKeys.includes(key))) {
-                const usedKeys = dataKeys.filter(key => !allJsonKeys.includes(key));
-                if (usedKeys.length > 2)
-                    return error(`'${usedKeys[0] + "', '" + usedKeys.slice(1, usedKeys.length - 1).join("', '")}', and '${usedKeys[usedKeys.length - 1]}' are invalid keys.`);
-                return error(`'${usedKeys.length == 2 ? usedKeys[0] + "' and '" + usedKeys[usedKeys.length - 1] + "' are invalid keys." : usedKeys[0] + "' is an invalid key."}`);
-            }
-
+            // Parse script format
+            const parsedJson = parseScriptFormat(currentValue);
+            json = parsedJson;
             buildEmbed();
-
         } catch (e) {
-            if (editor.getValue()) return;
+            if (currentValue) return;
             document.body.classList.add('emptyEmbed');
             embedContent.innerHTML = '';
         }
@@ -1252,23 +1344,25 @@ addEventListener('DOMContentLoaded', () => {
         activeFields = null;
 
         document.body.classList.add('gui');
+        document.body.classList.remove('script');
         if (pickInGuiMode) {
             pickInGuiMode = false;
             togglePicker();
         }
     })
 
-    document.querySelector('.opt.json').addEventListener('click', () => {
+    document.querySelector('.opt.script').addEventListener('click', () => {
         const emptyEmbedIndex = indexOfEmptyGuiEmbed(false);
         if (emptyEmbedIndex !== -1)
-            // Clicked GUI tab while a blank embed is added from GUI.
             return error(gui.querySelectorAll('.item.guiEmbedName')[emptyEmbedIndex].innerText.split(':')[0] + ' should not be empty.', '3s');
 
-        const jsonStr = JSON.stringify(json, null, 4);
-        lastGuiJson = jsonStr;
+        const scriptStr = toScriptFormat(json);
+        lastGuiJson = false;
 
         document.body.classList.remove('gui');
-        editor.setValue(jsonStr === '{}' ? '{\n\t\n}' : jsonStr);
+        document.body.classList.add('script');
+        editor.setValue(scriptStr || '');
+        editor.setOption('mode', 'text/plain');
         editor.refresh();
         editor.focus();
 
@@ -1286,8 +1380,8 @@ addEventListener('DOMContentLoaded', () => {
         buildEmbed();
         buildGui();
 
-        const jsonStr = JSON.stringify(json, null, 4);
-        editor.setValue(jsonStr === '{}' ? '{\n\t\n}' : jsonStr);
+        const scriptStr = toScriptFormat(json);
+        editor.setValue(scriptStr || '');
 
         for (const e of document.querySelectorAll('.gui .item'))
             e.classList.add('active');
@@ -1425,7 +1519,7 @@ addEventListener('DOMContentLoaded', () => {
 
     document.querySelector('.top-btn.copy').addEventListener('click', e => {
         const mark = e.target.closest('.top-btn.copy').querySelector('.mark'),
-            jsonData = JSON.stringify(json, null, 4),
+            scriptData = toScriptFormat(json),
             next = () => {
                 mark?.classList.remove('hidden');
                 mark?.previousElementSibling?.classList.add('hidden');
@@ -1436,10 +1530,10 @@ addEventListener('DOMContentLoaded', () => {
                 }, 1500);
             }
 
-        if (!navigator.clipboard?.writeText(jsonData).then(next).catch(err => console.log('Could not copy to clipboard: ' + err.message))) {
+        if (!navigator.clipboard?.writeText(scriptData).then(next).catch(err => console.log('Could not copy to clipboard: ' + err.message))) {
             const textarea = document.body.appendChild(document.createElement('textarea'));
 
-            textarea.value = jsonData;
+            textarea.value = scriptData;
             textarea.select();
             textarea.setSelectionRange(0, 50000);
             document.execCommand('copy');
