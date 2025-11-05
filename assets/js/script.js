@@ -982,7 +982,7 @@ addEventListener('DOMContentLoaded', () => {
                                 browse.classList.remove('loading');
                                 if (!res.success) {
                                     console.log('Upload failed:', res.data?.error || res.error?.message || res);
-                                    return uploadError(res.data?.error || res.error?.message || "Request failed. (Check dev-console)", browse);
+                                    return uploadError(res.data?.error || res.error?.message || "Request failed. ", browse);
                                 }
 
                                 imgSrc(edit.querySelector('.editIcon > .imgParent'), res.data.url);
