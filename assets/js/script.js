@@ -465,10 +465,6 @@ addEventListener('DOMContentLoaded', () => {
         extraKeys: {}
     });
 
-    // Set script mode by default
-    document.body.classList.add('script');
-    document.body.classList.remove('gui');
-
     editor.focus();
 
     const notif = document.querySelector('.notification');
