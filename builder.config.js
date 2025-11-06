@@ -17,7 +17,7 @@ options = {
     useJsonEditor: false,
     reverseColumns: false,
     allowPlaceholders: false,
-    autoUpdateURL: true,
+    autoUpdateURL: false,
     autoParams: false,
     hideEditor: false,
     hidePreview: false,

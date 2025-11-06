@@ -1,7 +1,7 @@
 /**
  * Modifed Discord Embed Builder
  * Contribute or report issues at
- * https://github.com/Glitchii/embedbuilder
+ * https://github.com/loti-dev/embedbuilder
  */
 
 window.options ??= {};
@@ -85,9 +85,8 @@ const decodeJson = data => {
     return typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
 };
 
-// IMPORTANT: jsonToBase64 and base64ToJson are subject to removal.
-// Use encodeJson and decodeJson instead, they are aliases.
-let jsonToBase64 = encodeJson, base64ToJson = decodeJson;
+// NOTE: use `encodeJson` and `decodeJson` for JSON <-> base64 conversions.
+// Older aliases removed to avoid unused globals.
 
 // Parse scripting language format to JSON
 const parseScriptFormat = (scriptText) => {
@@ -233,7 +232,7 @@ const toRGB = (hex, reversed, integer) => {
     return [parseInt(hex[0], 16), parseInt(hex[1], 16), parseInt(hex[2], 16), 1];
 };
 
-const reverse = (reversed, callback) => {
+const reverse = (reversed) => {
     const side = document.querySelector(reversed ? '.side2' : '.side1');
     if (side.nextElementSibling) side.parentElement.insertBefore(side.nextElementSibling, side);
     else side.parentElement.insertBefore(side, side.parentElement.firstElementChild);
@@ -329,16 +328,14 @@ const externalParsing = ({ noEmojis, element } = {}) => {
 };
 
 let embedKeys = ["author", "footer", "color", "thumbnail", "image", "fields", "title", "description", "url", "timestamp"];
-let mainKeys = ["embed", "embeds", "content"];
-let allJsonKeys = [...mainKeys, ...embedKeys];
 
 // 'jsonObject' is used internally, do not change it's value. Assign to 'json' instead.
 // 'json' is the object that is used to build the embed. Assigning to it also updates the editor.
 let jsonObject = window.json || {
-    content: "Welcome to the Script Embed Builder!",
+    content: "Welcome to the Loti Embed Builder!",
     embed: {
         title: "Example Embed",
-        description: "This is a sample description. You can use markdown formatting!",
+        description: "This is a sample description.",
         color: 0xB587FF,
         author: {
             name: "Author Name",
@@ -349,7 +346,7 @@ let jsonObject = window.json || {
             url: "https://cdn.discordapp.com/embed/avatars/0.png"
         },
         image: {
-            url: "https://glitchii.github.io/embedbuilder/assets/media/banner.png"
+            url: "https://cdn.loti.dev/assets/loti.png"
         },
         footer: {
             text: "Footer Text",
@@ -972,7 +969,6 @@ addEventListener('DOMContentLoaded', () => {
                         formData.append("expiration", expiration); // Expire after 7 days. Discord caches files.
                         formData.append("key", options.uploadKey || "93385e22b0619db73a5525140b13491c"); // Add your own key through the uploadKey option.
                         formData.append("image", el.target.files[0]);
-                        // formData.append("name", ""); // Uses original file name if no "name" is not specified.
 
                         browse.classList.add('loading');
 
@@ -1516,7 +1512,57 @@ addEventListener('DOMContentLoaded', () => {
                 }, 1500);
             }
 
-        if (!navigator.clipboard?.writeText(scriptData).then(next).catch(err => console.log('Could not copy to clipboard: ' + err.message))) {
+        const showCopyNotification = (message = 'Copied to clipboard', duration = 2000) => {
+            const existing = document.querySelector('.copy-toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'copy-toast';
+            toast.textContent = message;
+            Object.assign(toast.style, {
+                position: 'fixed',
+                top: '16px',
+                right: '16px',
+                background: 'rgba(0,0,0,0.8)',
+                color: '#fff',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                zIndex: 2000,
+                boxShadow: '0 6px 18px rgba(0,0,0,0.2)',
+                opacity: '0',
+                transform: 'translateY(-6px)',
+                transition: 'opacity 260ms ease, transform 260ms ease',
+                fontSize: '13px',
+                pointerEvents: 'none'
+            });
+
+            document.body.appendChild(toast);
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-6px)';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        };
+
+        const nextWithToast = () => { next(); showCopyNotification(); };
+
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(scriptData).then(nextWithToast).catch(err => {
+                console.log('Could not copy to clipboard: ' + err?.message);
+                showCopyNotification();
+                const textarea = document.body.appendChild(document.createElement('textarea'));
+
+                textarea.value = scriptData;
+                textarea.select();
+                textarea.setSelectionRange(0, 50000);
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                nextWithToast();
+            });
+        } else {
             const textarea = document.body.appendChild(document.createElement('textarea'));
 
             textarea.value = scriptData;
@@ -1524,7 +1570,7 @@ addEventListener('DOMContentLoaded', () => {
             textarea.setSelectionRange(0, 50000);
             document.execCommand('copy');
             document.body.removeChild(textarea);
-            next();
+            nextWithToast();
         }
     });
 });
